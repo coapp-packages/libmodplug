@@ -380,6 +380,13 @@ long _mm_getfsize(MMSTREAM *mmpat) {
 	return(fsize);
 }
 
+#ifdef _MSC_VER
+static int isblank(int c)
+{
+	return (c == ' ') || (c == '\t');
+}
+#endif
+
 void pat_init_patnames(void)
 {
 	int z, i, nsources, isdrumset, nskip, pfnlen;
