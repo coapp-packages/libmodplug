@@ -1,0 +1,55 @@
+@import @"version.inc";
+
+nuget {
+    nuspec {
+        id = libmodplug;
+        version : ${package-version};
+        title: "libmodplug";
+        authors: {Kenton Varda,Konstanty Bialkowski,Olivier Lapicque,Colin DeVilbiss,Markus Fick,Adam Goode,Marco Trillo,Alistair John Strachan,Tyler Montbriand};
+        owners: {CoApp Project};
+        licenseUrl: "https://github.com/coapp-packages/libmodplug/blob/CoApp/COPYING";
+        projectUrl: "http://github.com/coapp-packages/libmodplug";
+        requireLicenseAcceptance:false;
+        summary: "Libmodplug is an open source mod rendering library.";
+        description: @"Libmodplug is an open source mod rendering library.
+
+Homepage: http://modplug-xmms.sourceforge.net/";
+        releaseNotes: "Release of libmodplug 0.8.8.4 libraries.";
+        copyright: Copyright 2013;
+        tags: { mod modplug native CoApp };
+
+
+    };
+
+
+    files {
+        include: {
+            ..\src\modplug.h,
+        };
+
+        source += {
+            ..\src\*.cpp,
+            ..\src\*.h,
+            ..\src\libmodplug\*.h,
+        };
+
+
+        ("v100,v110", "Win32,x64", "release,debug", "Dynamic,Static,ltcg") => {
+            [${0},${1},${2},${3}] {
+                lib: { .\output\${0}\${1}\${2}\${3}\libmodplug.lib; };
+            };
+        };
+        ("v100,v110", "Win32,x64", "release,debug", "Dynamic") => {
+            [${0},${1},${2},${3}] {
+                bin:     { .\output\${0}\${1}\${2}\${3}\libmodplug.dll; };
+                symbols: { .\output\${0}\${1}\${2}\${3}\libmodplug.pdb; };
+            };
+        };
+    };
+
+
+    targets {
+        Defines += HAS_LIBMODPLUG;
+    };
+}
+
