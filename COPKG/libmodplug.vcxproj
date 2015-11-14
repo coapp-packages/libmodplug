@@ -10,7 +10,8 @@
   <PropertyGroup Label="ConfigurationSettings">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <IncludeDirectories>..\src;..\src\libmodplug</IncludeDirectories>
-    <ModuleDefinitionFile>libmodplug.def</ModuleDefinitionFile>
+    <Defines>$(Defines);MODPLUG_BUILD=1</Defines>
+    <Defines Condition="$(IS_DYNAMIC)">$(Defines);DLL_EXPORT</Defines>
   </PropertyGroup>
 
   <Import Condition="Exists('$(CoAppEtcDirectory)\common-header.vcxproj')" Project="$(CoAppEtcDirectory)\common-header.vcxproj" />

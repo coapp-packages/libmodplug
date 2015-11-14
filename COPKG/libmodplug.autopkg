@@ -1,5 +1,13 @@
 @import @"version.inc";
 
+configurations {
+	UserPlatformToolset {
+	    // Needed because autopackage lacks VS2015 support
+    	key = "PlatformToolset";
+    	choices: "v100,v110,v120,v140";
+	};
+};
+
 nuget {
     nuspec {
         id = libmodplug;
@@ -14,9 +22,9 @@ nuget {
         description: @"Libmodplug is an open source mod rendering library.
 
 Homepage: http://modplug-xmms.sourceforge.net/";
-        releaseNotes: "Release of libmodplug 0.8.8.4 libraries.";
+        releaseNotes: "Release of libmodplug 0.8.8.5 libraries.";
         copyright: Copyright 2013;
-        tags: { mod modplug native CoApp };
+        tags: { mod modplug native CoApp v100 v110 v120 v140 static dynamic ltcg };
 
 
     };
@@ -34,12 +42,12 @@ Homepage: http://modplug-xmms.sourceforge.net/";
         };
 
 
-        ("v100,v110", "Win32,x64", "release,debug", "Dynamic,Static,ltcg") => {
+        ("v100,v110,v120,v140", "Win32,x64", "release,debug", "Dynamic,Static,ltcg") => {
             [${0},${1},${2},${3}] {
                 lib: { .\output\${0}\${1}\${2}\${3}\libmodplug.lib; };
             };
         };
-        ("v100,v110", "Win32,x64", "release,debug", "Dynamic") => {
+        ("v100,v110,v120,v140", "Win32,x64", "release,debug", "Dynamic") => {
             [${0},${1},${2},${3}] {
                 bin:     { .\output\${0}\${1}\${2}\${3}\libmodplug.dll; };
                 symbols: { .\output\${0}\${1}\${2}\${3}\libmodplug.pdb; };
