@@ -695,7 +695,7 @@ BOOL CSoundFile::ReadMed(const BYTE *lpStream, DWORD dwMemLength)
 		{
 			for (UINT i8ch=0; i8ch<4; i8ch++)
 			{
-				if (pmex->channelsplit[i8ch]) --m_nChannels;
+				if (pmex->channelsplit[i8ch]) m_nChannels++;
 			}
 		}
 		// Song Comments

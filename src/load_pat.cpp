@@ -67,9 +67,9 @@ typedef UWORD WORD;
 
 // 128 gm and 63 drum
 #define MAXSMP				191
-static char midipat[MAXSMP][128];
-static char pathforpat[128];
-static char timiditycfg[128];
+static char midipat[MAXSMP][PATH_MAX];
+static char pathforpat[PATH_MAX] = {};
+static char timiditycfg[PATH_MAX] = {};
 
 #pragma pack(1)
 
@@ -354,11 +354,15 @@ static void mmfseek(MMFILE *mmfile, long p, int whence)
 
 static void mmreadUBYTES(BYTE *buf, long sz, MMFILE *mmfile)
 {
+	int sztr = sz;
 	// do not overread.
 	if (sz > mmfile->sz - mmfile->pos)
-		sz = mmfile->sz - mmfile->pos;
-	memcpy(buf, &mmfile->mm[mmfile->pos], sz);
+		sztr = mmfile->sz - mmfile->pos;
+	memcpy(buf, &mmfile->mm[mmfile->pos], sztr);
 	mmfile->pos += sz;
+	// if truncated read, populate the rest of the array with zeros.
+	if (sz > sztr)
+		memset(buf+sztr, 0, sz-sztr);
 }
 
 static void mmreadSBYTES(char *buf, long sz, MMFILE *mmfile)
@@ -394,16 +398,16 @@ void pat_init_patnames(void)
 	char line[PATH_MAX];
 	char cfgsources[5][PATH_MAX] = {{0}, {0}, {0}, {0}, {0}};
 	MMSTREAM *mmcfg;
-	strcpy(pathforpat, PATHFORPAT);
-	strcpy(timiditycfg, TIMIDITYCFG);
+	strncpy(pathforpat, PATHFORPAT, PATH_MAX);
+	strncpy(timiditycfg, TIMIDITYCFG, PATH_MAX);
 	p = getenv(PAT_ENV_PATH2CFG);
 	if( p ) {
-		strcpy(timiditycfg,p);
-		strcpy(pathforpat,p);
-		strcat(timiditycfg,"/timidity.cfg");
-		strcat(pathforpat,"/instruments");
+		strncpy(timiditycfg, p, PATH_MAX - 14);
+		strncpy(pathforpat, p, PATH_MAX - 13);
+		strcat(timiditycfg, "/timidity.cfg");
+		strcat(pathforpat, "/instruments");
 	}
-	strncpy(cfgsources[0], timiditycfg, PATH_MAX);
+	strncpy(cfgsources[0], timiditycfg, PATH_MAX - 1);
 	nsources = 1;
 
 	for( i=0; i<MAXSMP; i++ )	midipat[i][0] = '\0';
@@ -569,7 +573,8 @@ static void pat_read_waveheader(MMSTREAM *mmpat, WaveHeader *hw, int layer)
 		}
 	}
 	_mm_read_UBYTES((BYTE *)hw, sizeof(WaveHeader), mmpat);
-	strncpy(hw->reserved, hl.reserved, 36);
+	strncpy(hw->reserved, hl.reserved, 32);
+	hw->reserved[31] = 0;
 	if( hw->start_loop >= hw->wave_size ) {
 		hw->start_loop = 0;
 		hw->end_loop = 0;
@@ -632,7 +637,7 @@ static void pat_get_waveheader(MMFILE *mmpat, WaveHeader *hw, int layer)
 static int pat_readpat_attr(int pat, WaveHeader *hw, int layer)
 {
 	char fname[128];
-	int fsize;
+	unsigned long fsize;
 	MMSTREAM *mmpat;
 	pat_build_path(fname, pat);
 	mmpat = _mm_fopen(fname, "r");
@@ -1337,7 +1342,7 @@ static void PATsample(CSoundFile *cs, MODINSTRUMENT *q, int smp, int gm)
 #else
 	s[31] = '\0';
 	memset(cs->m_szNames[smp], 0, 32);
-	strcpy(cs->m_szNames[smp], s);
+	strncpy(cs->m_szNames[smp], s, 32-1);
 	q->nGlobalVol = 64;
 	q->nPan       = 128;
 	q->uFlags     = CHN_16BIT;
@@ -1346,7 +1351,7 @@ static void PATsample(CSoundFile *cs, MODINSTRUMENT *q, int smp, int gm)
 		pat_setpat_attr(&hw, q);
 		pat_loops[smp-1] = (q->uFlags & CHN_LOOP)? 1: 0;
 		if( hw.modes & PAT_16BIT ) p = (char *)malloc(hw.wave_size);
-		else p = (char *)malloc(hw.wave_size * sizeof(short int));
+		else p = (char *)malloc(hw.wave_size * sizeof(char)*2);
 		if( p ) {
 			if( hw.modes & PAT_16BIT ) {
 				dec_pat_Decompress16Bit((short int *)p, hw.wave_size>>1, gm - 1);
@@ -1368,7 +1373,7 @@ static void PATsample(CSoundFile *cs, MODINSTRUMENT *q, int smp, int gm)
 		q->nVolume    = 256;
 		q->uFlags    |= CHN_LOOP;
 		q->uFlags    |= CHN_16BIT;
-		p = (char *)malloc(q->nLength*sizeof(short int));
+		p = (char *)malloc(q->nLength*sizeof(char)*2);
 		if( p ) {
 			dec_pat_Decompress8Bit((short int *)p, q->nLength, smp + MAXSMP - 1);
 			cs->ReadSample(q, RS_PCM16S, (LPSTR)p, q->nLength*2);
@@ -1529,8 +1534,8 @@ BOOL CSoundFile::ReadPAT(const BYTE *lpStream, DWORD dwMemLength)
 	}
 #else
 	m_nType         = MOD_TYPE_PAT;
-	m_nInstruments  = h->samples + 1; // we know better but use each sample in the pat...
-	m_nSamples      = h->samples + 1; // xmms modplug does not use slot zero
+	m_nInstruments  = h->samples >= MAX_INSTRUMENTS-1 ? MAX_INSTRUMENTS-1 : h->samples + 1; // we know better but use each sample in the pat...
+	m_nSamples      = h->samples >= MAX_SAMPLES-1 ? MAX_SAMPLES-1 : h->samples + 1; // xmms modplug does not use slot zero
 	m_nDefaultSpeed = 6;
 	m_nChannels     = h->samples;
 	numpat          = t;
@@ -1582,8 +1587,9 @@ BOOL CSoundFile::ReadPAT(const BYTE *lpStream, DWORD dwMemLength)
 		s[31] = '\0';
 		memset(m_szNames[t], 0, 32);
 		strcpy(m_szNames[t], s);
-		if( hw.modes & PAT_16BIT ) p = (char *)malloc(hw.wave_size);
-		else p = (char *)malloc(hw.wave_size * sizeof(short int));
+		if ( hw.wave_size == 0 ) p = NULL;
+		else if( hw.modes & PAT_16BIT ) p = (char *)malloc(hw.wave_size);
+		else p = (char *)malloc(hw.wave_size * sizeof(char) * 2);
 		if( p ) {
 			mmreadSBYTES(p, hw.wave_size, mmfile);
 			if( hw.modes & PAT_16BIT ) {
